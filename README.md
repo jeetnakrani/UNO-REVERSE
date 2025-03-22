@@ -1,6 +1,4 @@
-Here's your content neatly structured, clearly formatted, and ready-to-use as a professional `README.md` file for your GitHub or hackathon submission:
 
----
 
 # 🚀 **Smart Facility Task Dashboard**
 
