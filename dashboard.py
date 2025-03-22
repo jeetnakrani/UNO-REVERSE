@@ -2,107 +2,112 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import joblib
 import shap
-import matplotlib.pyplot as plt
-import base64
-import io
+from prophet import Prophet
+from sklearn.ensemble import RandomForestClassifier, IsolationForest
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 
-st.set_page_config(page_title="Smart Facility Task Dashboard", layout="wide")
+# Title
+st.title("🚀 Smart Task Management Dashboard")
 
-# Load data and model
-@st.cache_data
+# Load Data
+@st.cache
 def load_data():
-    return pd.read_csv("facility_tasks.csv", parse_dates=['scheduled_time', 'start_time', 'completion_time'])
+    data = pd.read_csv("facility_tasks.csv")  # Your CSV file path
+    data['date'] = pd.to_datetime(data['date'])
+    return data
 
-@st.cache_resource
-def load_model():
-    return joblib.load("random_forest_model.pkl")
+data = load_data()
 
-df = load_data()
-model = load_model()
+# Sidebar Filters
+st.sidebar.header("🔍 Custom Filters")
+teams = st.sidebar.multiselect("Select Team", options=data["team"].unique(), default=data["team"].unique())
+tasks = st.sidebar.multiselect("Select Task Type", options=data["task_type"].unique(), default=data["task_type"].unique())
+dates = st.sidebar.date_input("Select Date Range", [data["date"].min(), data["date"].max()])
 
-# Preprocessing
-df['hour_of_day'] = df['scheduled_time'].dt.hour
-df['weekday'] = df['scheduled_time'].dt.strftime('%A')
-df['month'] = df['scheduled_time'].dt.month
-if 'was_missed' not in df.columns:
-    df['was_missed'] = df['status'].apply(lambda x: 1 if str(x).strip().lower() == 'missed' else 0)
+filtered_data = data[
+    (data['team'].isin(teams)) &
+    (data['task_type'].isin(tasks)) &
+    (data['date'] >= pd.to_datetime(dates[0])) &
+    (data['date'] <= pd.to_datetime(dates[1]))
+]
 
-# Sidebar: Filter and Prediction
-st.sidebar.title("🛠️ Controls")
+# Prediction Model
+X = pd.get_dummies(filtered_data[['task_type', 'team', 'task_duration']])
+y = filtered_data['task_missed']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Filters
-st.sidebar.header("📂 Filter Dataset")
-task_types = st.sidebar.multiselect("Task Types", df['task_type'].unique(), default=list(df['task_type'].unique()))
-locations = st.sidebar.multiselect("Locations", df['location'].unique(), default=list(df['location'].unique()))
-filtered_df = df[(df['task_type'].isin(task_types)) & (df['location'].isin(locations))]
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
 
-# Prediction inputs
-st.sidebar.header("🔮 Predict Missed Task")
-expected_duration = st.sidebar.slider("Expected Duration (min)", 30, 240, 60)
-technician_experience = st.sidebar.slider("Technician Experience (yrs)", 1, 15, 5)
-hour_of_day = st.sidebar.slider("Scheduled Hour", 0, 23, 10)
-asset_age = st.sidebar.slider("Asset Age (yrs)", 0, 20, 5)
-priority = st.sidebar.selectbox("Priority", ['Low', 'Medium', 'High'])
-priority_enc = {'Low': 0, 'Medium': 1, 'High': 2}[priority]
+st.subheader("📊 Prediction Performance")
+st.text(classification_report(y_test, y_pred))
 
-if st.sidebar.button("Predict"):
-    input_df = pd.DataFrame([{
-        'expected_duration': expected_duration,
-        'technician_experience': technician_experience,
-        'hour_of_day': hour_of_day,
-        'asset_age': asset_age,
-        'priority_enc': priority_enc
-    }])
-    prob = model.predict_proba(input_df)[0][1]
-    prediction = model.predict(input_df)[0]
-    risk = "High Risk" if prob > 0.7 else ("Medium Risk" if prob > 0.4 else "Low Risk")
-    status = "Missed" if prediction == 1 else "Completed"
-    st.sidebar.markdown(f"### 🔍 Prediction: **{status}** ({risk}, Confidence: {prob:.2%})")
+# SHAP Explanation
+st.subheader("📌 SHAP Feature Importance")
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X_test)
+shap.summary_plot(shap_values[1], X_test, plot_type="bar", show=False)
+st.pyplot(bbox_inches='tight')
 
-# Main Panel
-st.title("📊 Smart Facility Task Dashboard")
-st.markdown("Track task performance, detect patterns, and predict missed tasks using ML.")
+# Heatmap Visualization
+st.subheader("🔥 Missed Tasks Heatmap")
+heatmap_data = filtered_data.pivot_table(values='task_missed', index='team', columns='task_type', aggfunc='sum', fill_value=0)
+fig1 = px.imshow(heatmap_data, color_continuous_scale="Reds")
+st.plotly_chart(fig1)
 
-# Show filtered data
-st.subheader("📄 Filtered Dataset")
-st.dataframe(filtered_df.reset_index(drop=True), use_container_width=True)
+# Automated Insights
+st.subheader("🤖 Automated Insights")
+total_missed = filtered_data['task_missed'].sum()
+top_team = filtered_data.groupby('team')['task_missed'].sum().idxmax()
+top_task = filtered_data.groupby('task_type')['task_missed'].sum().idxmax()
 
-# Heatmap
-st.subheader("🔥 Miss Rate by Weekday & Hour")
-heatmap_data = filtered_df.pivot_table(index='weekday', columns='hour_of_day', values='was_missed', aggfunc='mean')
-fig_heat = px.imshow(heatmap_data, color_continuous_scale='Reds', aspect='auto')
-st.plotly_chart(fig_heat, use_container_width=True)
+st.info(f"Total missed tasks: {total_missed}")
+st.warning(f"🚩 Team '{top_team}' has the highest missed tasks.")
+st.warning(f"⚠️ Task '{top_task}' type misses most frequently.")
+st.success(f"✅ Recommendation: Prioritize resources for '{top_team}' on '{top_task}' tasks.")
 
-# Trend
-st.subheader("📈 Monthly Miss Rate Trend")
-trend = filtered_df.groupby('month')['was_missed'].mean().reset_index()
-fig_trend = px.line(trend, x='month', y='was_missed', markers=True)
-st.plotly_chart(fig_trend, use_container_width=True)
+# Prophet Forecasting
+forecast_df = filtered_data.groupby('date').agg({'task_missed':'sum'}).reset_index().rename(columns={'date':'ds','task_missed':'y'})
+prophet = Prophet()
+prophet.fit(forecast_df)
+future = prophet.make_future_dataframe(30)
+forecast = prophet.predict(future)
 
-# Quick Insight
-st.subheader("🧠 Quick Insight")
-latest_month = trend['month'].max()
-miss_rate = trend.loc[trend['month'] == latest_month, 'was_missed'].values[0]
-st.markdown(f"**Latest Month ({latest_month}) Miss Rate:** {miss_rate:.2%}")
+st.subheader("📅 30-Day Forecast")
+fig2 = prophet.plot(forecast)
+st.pyplot(fig2)
 
-# SHAP Explainability
-st.subheader("🔍 Feature Importance (SHAP)")
-important_features = ['expected_duration', 'technician_experience', 'hour_of_day', 'asset_age', 'priority']
-df_model = df.copy()
-df_model['priority_enc'] = df_model['priority'].map({'Low': 0, 'Medium': 1, 'High': 2})
-df_model = df_model.dropna(subset=important_features)
-X_shap = df_model[['expected_duration', 'technician_experience', 'hour_of_day', 'asset_age', 'priority_enc']]
+# Anomaly Detection
+iso = IsolationForest(contamination=0.05, random_state=42)
+filtered_data['anomaly'] = iso.fit_predict(X)
+anomalies = filtered_data[filtered_data['anomaly']==-1]
 
-explainer = shap.Explainer(model, X_shap)
-shap_values = explainer(X_shap.iloc[:100], check_additivity=False)
-fig = plt.figure()
-shap.summary_plot(shap_values, X_shap.iloc[:100], show=False)
-plt.tight_layout()
-buf = io.BytesIO()
-plt.savefig(buf, format="png")
-plt.close(fig)
-buf.seek(0)
-image_base64 = base64.b64encode(buf.read()).decode('utf-8')
-st.image(f"data:image/png;base64,{image_base64}", caption="Top Contributing Features")
+st.subheader("🚨 Detected Anomalies")
+st.write(anomalies[['date', 'team', 'task_type', 'task_duration']])
+
+# Resource Optimization
+daily_avg = filtered_data.groupby('date').size().mean()
+optimal_staff = np.ceil(daily_avg / 10)
+st.subheader("👥 Resource Optimization")
+st.info(f"Optimal daily staffing recommendation: {int(optimal_staff)} members.")
+
+# Adaptive Scheduling Alerts
+latest_day = filtered_data['date'].max()
+latest_miss_rate = filtered_data[filtered_data['date']==latest_day]['task_missed'].mean()
+
+if latest_miss_rate > filtered_data['task_missed'].mean():
+    st.error("🔴 Alert: Increased missed tasks detected today. Reallocation recommended.")
+else:
+    st.success("🟢 Today's missed tasks are within expected ranges.")
+
+# K-Means Clustering
+st.subheader("🧩 Task Clustering")
+kmeans = KMeans(n_clusters=3, random_state=42)
+filtered_data['cluster'] = kmeans.fit_predict(X)
+
+fig3 = px.scatter(filtered_data, x="task_duration", y="task_type", color="cluster", title="Task Clusters (Completion Likelihood)")
+st.plotly_chart(fig3)
