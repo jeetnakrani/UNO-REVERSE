@@ -1,45 +1,61 @@
-# UNO-REVERSE
-🚀 Smart Facility Task Dashboard
-A comprehensive, AI-powered dashboard to predict, visualize, and proactively manage facility task performance.
+Here's your content neatly structured, clearly formatted, and ready-to-use as a professional `README.md` file for your GitHub or hackathon submission:
 
-🎯 Features Clearly Implemented:
-1️⃣ Interactive Visualizations:
-Missed Tasks Over Time: Clearly track daily missed tasks.
+---
 
-Technician Performance Overview: Compare performance metrics for technicians clearly.
+# 🚀 **Smart Facility Task Dashboard**
 
-Feedback Score Trend: Track user satisfaction trends over time.
+A comprehensive, AI-powered dashboard designed to **predict**, **visualize**, and **proactively manage** facility task performance.
 
-Location and Asset Insights: Quickly spot problematic locations or asset types.
+---
 
-2️⃣ Predictive Modeling (Random Forest):
-Predict whether specific tasks will be missed or completed.
+## 🎯 **Features Implemented**
 
-Clearly displays a classification report.
+### **1️⃣ Interactive Visualizations**
+- **Missed Tasks Over Time:** Track daily missed tasks.
+- **Technician Performance Overview:** Compare and visualize performance metrics of technicians.
+- **Feedback Score Trend:** Monitor user satisfaction trends.
+- **Location and Asset Insights:** Quickly identify problematic locations and assets.
 
-3️⃣ Explainable AI with SHAP:
-Clearly identifies important factors affecting task completion.
+### **2️⃣ Predictive Modeling (Random Forest)**
+- Predict if specific tasks will be missed or successfully completed.
+- Clearly display detailed classification metrics.
 
-Provides visual insights into risk factors.
+### **3️⃣ Explainable AI (SHAP)**
+- Identify key factors impacting task completion.
+- Provide visual explanations for predictions.
 
-4️⃣ Forecasting with Prophet:
-Forecasts missed tasks for the next 30 days.
+### **4️⃣ Forecasting (Prophet)**
+- Forecast missed tasks for the upcoming 30 days.
+- Proactively manage resources based on forecasted trends.
 
-Helps plan resources and schedules proactively.
+### **5️⃣ Anomaly Detection (Isolation Forest)**
+- Automatically detect unusual spikes in task misses.
+- Highlight critical anomalies requiring immediate attention.
 
-5️⃣ Anomaly Detection (Isolation Forest):
-Automatically identifies unusual spikes in missed tasks.
+### **6️⃣ Resource Optimization Suggestions**
+- Recommend optimal technician staffing based on predicted workloads.
 
-Clearly highlights anomalies needing immediate attention.
+### **7️⃣ Adaptive Scheduling Alerts**
+- Dynamically alert users when daily missed tasks exceed historical averages.
+- Suggest actionable schedule adjustments.
 
-5️⃣ Resource Optimization Suggestions:
-Clearly recommends optimal staffing based on workload predictions.
+### **8️⃣ Auto-Clustering of Task Types**
+- Group tasks automatically based on similar characteristics.
+- Identify and prioritize high-risk task clusters.
 
-6️⃣ Adaptive Scheduling Alerts:
-Dynamically alerts users if today’s missed tasks exceed average levels, suggesting schedule adjustments.
+### **9️⃣ Real-Time Predictive Tool**
+- Interactive sidebar enabling real-time predictions based on user inputs.
+- Clearly communicates task risk level and actionable insights.
 
-7️⃣ Auto-Clustering of Task Types:
-Automatically groups tasks by characteristics, clearly identifying high-risk categories.
+---
 
-8️⃣ Real-Time Predictive Tool:
-Interactive sidebar for real-time task prediction based on user inputs.
+## ⚙️ **Tech Stack Used**
+- **Python**
+- **Streamlit**
+- **Scikit-Learn**
+- **Prophet**
+- **SHAP**
+- **Plotly**
+- **Pandas & NumPy**
+
+---
