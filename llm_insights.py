@@ -1,32 +1,25 @@
-
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
+import os
 
-model_id = "mistralai/Mistral-7B-Instruct-v0.2"
+# Silence TensorFlow warnings (if present)
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+model_id = "microsoft/phi-2"
+
+tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
     device_map='auto',
     torch_dtype=torch.float16,
-    load_in_4bit=True,
+    trust_remote_code=True
 )
 
 pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
-def generate_insights(prompt, max_length=250):
-    messages = [
-        {"role": "user", "content": prompt}
-    ]
-    formatted_prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False)
-
-    outputs = pipe(
-        formatted_prompt,
-        max_length=max_length,
-        do_sample=True,
-        temperature=0.7,
-        top_p=0.95,
-    )
-    insight = outputs[0]['generated_text']
-    return insight.split("[/INST]")[-1].strip()
-
+def generate_insights(prompt, max_length=300):
+    inputs = pipe.tokenizer(prompt, return_tensors="pt", return_attention_mask=False)
+    outputs = pipe.model.generate(**inputs, max_length=max_length, do_sample=True, temperature=0.7)
+    insight = pipe.tokenizer.batch_decode(outputs)[0]
+    return insight.replace(prompt, "").strip()
